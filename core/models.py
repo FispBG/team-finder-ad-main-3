@@ -7,7 +7,10 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 class UserManager(BaseUserManager):
+    """Менеджер для кастомной модели пользователя, обеспечивающий создание обычных пользователей и суперпользователей."""
+
     def create_user(self, email, name, surname, password=None, **extra_fields):
+        """Создание обычного пользователя с обязательными полями email, name и surname."""
         if not email:
             raise ValueError('Email является обязательным полем')
         email = self.normalize_email(email)
@@ -17,27 +20,35 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, name, surname, password=None, **extra_fields):
+        """Создание суперпользователя с правами администратора."""
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
         return self.create_user(email, name, surname, password, **extra_fields)
 
 
 class Skill(models.Model):
+    """Модель навыков, которые могут быть связаны с пользователями и проектами."""
+
     name = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
-        return self.name
+        """Строковое представление навыка, отображающее его название."""
+        return str(self.name)
 
     class Meta:
+        """Сортировка навыков по названию в алфавитном порядке."""
+
         ordering = ['name']
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    """Кастомная модель пользователя с расширенными полями и функционалом."""
+
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=124)
     surname = models.CharField(max_length=124)
     avatar = models.ImageField(upload_to='avatars/', blank=True)
-    phone = models.CharField(max_length=12, unique=True)
+    phone = models.CharField(max_length=12, unique=True, blank=True, null=True)
     github_url = models.URLField(blank=True, null=True)
     about = models.TextField(max_length=256, blank=True, null=True)
 
@@ -53,10 +64,14 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['name', 'surname']
 
     def save(self, *args, **kwargs):
+        """Переопределение метода сохранения.
+
+        Автоматическая генерация аватара и нормализация номера телефона.
+        """
         if not self.avatar and self.name:
             first_letter = self.name[0].upper()
             bg_colors = [
-                (41, 128, 185), (39, 174, 96), (142, 68, 173), 
+                (41, 128, 185), (39, 174, 96), (142, 68, 173),
                 (230, 126, 34), (192, 57, 43), (44, 62, 80)
             ]
             bg_color = random.choice(bg_colors)
@@ -92,6 +107,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 
 class Project(models.Model):
+    """Модель проекта с расширенными полями и функционалом."""
+
     STATUS_CHOICES = [
         ("open", "Open"),
         ("closed", "Closed"),
@@ -106,7 +123,10 @@ class Project(models.Model):
     skills = models.ManyToManyField(Skill, blank=True, related_name='projects')
 
     def __str__(self):
-        return self.name
+        """Строковое представление проекта, отображающее его название."""
+        return str(self.name)
 
     class Meta:
+        """Сортировка проектов по дате создания в порядке убывания (новые проекты первыми)."""
+
         ordering = ['-created_at']
