@@ -1,18 +1,11 @@
+# Сторонние библиотеки
 from django import forms
 from django.contrib.auth import get_user_model
-from urllib.parse import urlparse
-import re
+
+# Локальные импорты
+from .utils import validate_github, validate_phone_number
 
 User = get_user_model()
-
-
-def validate_github(url):
-    """Проверка, что предоставленная ссылка ведет на Github."""
-    if url:
-        parsed = urlparse(url)
-        if 'github.com' not in parsed.netloc.lower():
-            raise forms.ValidationError("Ссылка должна вести именно на Github.")
-    return url
 
 
 class RegistrationForm(forms.ModelForm):
@@ -55,28 +48,7 @@ class ProfileEditForm(forms.ModelForm):
     def clean_phone(self):
         """Проверяем, что номер телефона соответствует формату и не занят другим пользователем."""
         phone = self.cleaned_data.get('phone')
-        if not phone:
-            return phone
-
-        if phone.startswith('8'):
-            normalized = '+7' + phone[1:]
-        else:
-            normalized = phone
-
-        if not re.match(r'^\+7\d{10}$|^8\d{10}$', phone):
-            raise forms.ValidationError(
-                "Номер телефона должен быть в формате 8XXXXXXXXXX или +7XXXXXXXXXX."
-            )
-
-        qs = User.objects.filter(phone=normalized).exclude(pk=self.instance.pk)
-        if phone.startswith('+7'):
-            qs = qs | User.objects.filter(phone='8' + phone[2:]).exclude(pk=self.instance.pk)
-        elif phone.startswith('8'):
-            qs = qs | User.objects.filter(phone='+7' + phone[1:]).exclude(pk=self.instance.pk)
-
-        if qs.exists():
-            raise forms.ValidationError("Пользователь с таким номером телефона уже существует.")
-        return phone
+        return validate_phone_number(phone, exclude_pk=self.instance.pk)
 
     def clean_github_url(self):
         """Проверяем, что ссылка на Github корректная."""

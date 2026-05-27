@@ -1,4 +1,7 @@
+# Сторонние библиотеки
 from django.urls import path
+
+# Локальные импорты
 from . import views
 
 app_name = 'users'

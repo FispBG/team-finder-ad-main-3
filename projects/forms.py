@@ -1,21 +1,15 @@
+# Сторонние библиотеки
 from django import forms
-from .models import Project
-from urllib.parse import urlparse
 
-
-def validate_github(url):
-    """Проверка, что предоставленная ссылка ведет на Github."""
-    if url:
-        parsed = urlparse(url)
-        if 'github.com' not in parsed.netloc.lower():
-            raise forms.ValidationError("Ссылка должна вести именно на Github.")
-    return url
+# Локальные импорты
+from .models import PROJECT_STATUS_CHOICES, Project
+from .utils import validate_github
 
 
 class ProjectForm(forms.ModelForm):
     """Форма для создания и редактирования проектов."""
 
-    status = forms.ChoiceField(choices=Project.STATUS_CHOICES, widget=forms.Select)
+    status = forms.ChoiceField(choices=PROJECT_STATUS_CHOICES, widget=forms.Select)
 
     class Meta:
         """Указываем модель и поля, которые будут отображаться в форме."""

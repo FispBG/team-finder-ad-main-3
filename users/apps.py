@@ -1,3 +1,4 @@
+# Сторонние библиотеки
 from django.apps import AppConfig
 
 

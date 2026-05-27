@@ -1,24 +1,34 @@
+# Стандартные библиотеки
+from http import HTTPStatus
+
+# Сторонние библиотеки
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponseForbidden
 
-from .models import Project
+# Локальные импорты
+from .models import STATUS_CLOSED, STATUS_OPEN, Project
 from .forms import ProjectForm
 from users.models import Skill
 
 
+def get_paginated_page(request, queryset, per_page=12):
+    """Вспомогательная функция для пагинации."""
+    paginator = Paginator(queryset, per_page)
+    page_number = request.GET.get('page')
+    return paginator.get_page(page_number)
+
+
 def project_list(request):
     """Отображение списка проектов с возможностью фильтрации по навыкам."""
-    projects_qs = Project.objects.all()
+    projects_qs = Project.objects.select_related('owner').prefetch_related('skills')
     active_skill = request.GET.get('skill')
 
     if active_skill:
         projects_qs = projects_qs.filter(skills__name=active_skill).distinct()
 
-    paginator = Paginator(projects_qs, 12)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = get_paginated_page(request, projects_qs)
     all_skills = Skill.objects.all()
 
     context = {
@@ -52,7 +62,7 @@ def create_project(request):
             project.owner = request.user
             project.save()
             project.participants.add(request.user)
-            return redirect(f'/projects/{project.id}/')
+            return redirect('projects:project_details', pk=project.id)
     else:
         form = ProjectForm()
     return render(request, 'projects/create-project.html', {'form': form, 'is_edit': False})
@@ -68,7 +78,7 @@ def edit_project(request, pk):
         form = ProjectForm(request.POST, instance=project)
         if form.is_valid():
             form.save()
-            return redirect(f'/projects/{project.id}/')
+            return redirect('projects:project_details', pk=project.id)
     else:
         form = ProjectForm(instance=project)
     return render(request, 'projects/create-project.html', {'form': form, 'is_edit': True})
@@ -78,46 +88,63 @@ def edit_project(request, pk):
 def complete_project(request, pk):
     """Отметить проект как завершенный. Доступно только для автора проекта."""
     if request.method == "POST":
-        project = get_object_or_404(Project, pk=pk)
+        project = Project.objects.filter(pk=pk).first()
+        if project is None:
+            return JsonResponse({"error": "Project not found"}, status=HTTPStatus.NOT_FOUND)
         if project.owner != request.user:
-            return HttpResponseForbidden("Вы не являетесь автором проекта")
-        if project.status == "open":
-            project.status = "closed"
+            return JsonResponse({"error": "Вы не являетесь автором проекта"},
+                                status=HTTPStatus.FORBIDDEN)
+        if project.status == STATUS_OPEN:
+            project.status = STATUS_CLOSED
             project.save()
-        return JsonResponse({"status": "ok", "project_status": "closed"})
-    return JsonResponse({"error": "Method not allowed"}, status=405)
+        return JsonResponse({"status": "ok", "project_status": STATUS_CLOSED})
+
+    return JsonResponse({"error": "Method not allowed"}, status=HTTPStatus.METHOD_NOT_ALLOWED)
 
 
 def toggle_favorite(request, project_id):
     """Добавление или удаление проекта из избранного текущего пользователя."""
     if not request.user.is_authenticated:
-        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+        return JsonResponse({"status": "error", "message": "Unauthorized"},
+                            status=HTTPStatus.UNAUTHORIZED)
+
     if request.method == "POST":
-        project = get_object_or_404(Project, id=project_id)
+        project = Project.objects.filter(id=project_id).first()
+        if project is None:
+            return JsonResponse({"error": "Project not found"}, status=HTTPStatus.NOT_FOUND)
+
         user = request.user
-        if project in user.favorites.all():
+        is_favorited = user.favorites.filter(id=project.id).exists()
+        if is_favorited:
             user.favorites.remove(project)
-            favorited = False
         else:
             user.favorites.add(project)
-            favorited = True
-        return JsonResponse({"status": "ok", "favorited": favorited})
-    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+        return JsonResponse({"status": "ok", "favorited": not is_favorited})
+    return JsonResponse({"error": "Method not allowed"}, status=HTTPStatus.METHOD_NOT_ALLOWED)
 
 
 def toggle_participate(request, pk):
     """Добавление или удаление текущего пользователя из участников проекта."""
     if not request.user.is_authenticated:
-        return JsonResponse({"status": "error", "message": "Unauthorized"}, status=401)
+        return JsonResponse({"status": "error", "message": "Unauthorized"},
+                            status=HTTPStatus.UNAUTHORIZED)
+
     if request.method == "POST":
-        project = get_object_or_404(Project, pk=pk)
+        project = Project.objects.filter(pk=pk).first()
+        if project is None:
+            return JsonResponse({"error": "Project not found"}, status=HTTPStatus.NOT_FOUND)
+
         if project.owner == request.user:
-            return JsonResponse({"error": "Owner cannot leave/join via toggle"}, status=400)
-        if project.participants.filter(id=request.user.id).exists():
+            return JsonResponse({"error": "Owner cannot leave/join via toggle"},
+                                status=HTTPStatus.BAD_REQUEST)
+
+        is_active = project.participants.filter(id=request.user.id).exists()
+
+        if is_active:
             project.participants.remove(request.user)
-            is_active = False
         else:
             project.participants.add(request.user)
-            is_active = True
-        return JsonResponse({"status": "ok", "participant": is_active})
-    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+        return JsonResponse({"status": "ok", "participant": not is_active})
+    return JsonResponse({"error": "Method not allowed"}, status=HTTPStatus.METHOD_NOT_ALLOWED)
