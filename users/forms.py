@@ -17,7 +17,7 @@ class RegistrationForm(forms.ModelForm):
         """Указываем модель и поля, которые будут отображаться в форме."""
 
         model = User
-        fields = ['name', 'surname', 'email', 'password']
+        fields = ["name", "surname", "email", "password"]
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -39,20 +39,21 @@ class ProfileEditForm(forms.ModelForm):
 
     Позволяет изменять личные данные, телефон и ссылку на Github.
     """
+
     class Meta:
         """Указываем модель и поля, которые будут отображаться в форме."""
 
         model = User
-        fields = ['name', 'surname', 'avatar', 'about', 'phone', 'github_url']
+        fields = ["name", "surname", "avatar", "about", "phone", "github_url"]
 
     def clean_phone(self):
         """Проверяем, что номер телефона соответствует формату и не занят другим пользователем."""
-        phone = self.cleaned_data.get('phone')
+        phone = self.cleaned_data.get("phone")
         return validate_phone_number(phone, exclude_pk=self.instance.pk)
 
     def clean_github_url(self):
         """Проверяем, что ссылка на Github корректная."""
-        return validate_github(self.cleaned_data.get('github_url'))
+        return validate_github(self.cleaned_data.get("github_url"))
 
 
 class PasswordChangeForm(forms.Form):
@@ -68,15 +69,15 @@ class PasswordChangeForm(forms.Form):
 
     def clean_old_password(self):
         """Проверяем, что текущий пароль указан верно."""
-        old_password = self.cleaned_data.get('old_password')
+        old_password = self.cleaned_data.get("old_password")
         if not self.user.check_password(old_password):
             raise forms.ValidationError("Текущий пароль указан неверно.")
         return old_password
 
     def clean(self):
         cleaned_data = super().clean()
-        p1 = cleaned_data.get('new_password1')
-        p2 = cleaned_data.get('new_password2')
+        p1 = cleaned_data.get("new_password1")
+        p2 = cleaned_data.get("new_password2")
         if p1 and p2 and p1 != p2:
             raise forms.ValidationError("Новые пароли не совпадают.")
         return cleaned_data

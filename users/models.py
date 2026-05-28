@@ -20,7 +20,7 @@ class Skill(models.Model):
     class Meta:
         """Устанавливаем порядок сортировки навыков по имени."""
 
-        ordering = ['name']
+        ordering = ["name"]
 
     def __str__(self):
         return str(self.name)
@@ -32,22 +32,25 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=USER_NAME_MAX_LENGTH)
     surname = models.CharField(max_length=USER_NAME_MAX_LENGTH)
-    avatar = models.ImageField(upload_to='avatars/', blank=True)
-    phone = models.CharField(max_length=USER_PHONE_MAX_LENGTH, unique=True, blank=True, null=True)
+    avatar = models.ImageField(upload_to="avatars/", blank=True)
+    phone = models.CharField(
+        max_length=USER_PHONE_MAX_LENGTH, unique=True, blank=True, null=True
+    )
     github_url = models.URLField(blank=True, null=True)
     about = models.TextField(max_length=USER_ABOUT_MAX_LENGTH, blank=True, null=True)
 
-    skills = models.ManyToManyField(Skill, blank=True, related_name='users')
-    favorites = models.ManyToManyField('projects.Project',
-                                       blank=True, related_name='interested_users')
+    skills = models.ManyToManyField(Skill, blank=True, related_name="users")
+    favorites = models.ManyToManyField(
+        "projects.Project", blank=True, related_name="interested_users"
+    )
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
     objects = UserManager()
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['name', 'surname']
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["name", "surname"]
 
     def save(self, *args, **kwargs):
         """Переопределяем метод сохранения."""

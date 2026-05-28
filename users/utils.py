@@ -10,7 +10,6 @@ from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
 from PIL import Image, ImageDraw, ImageFont
 
-
 AVATAR_IMAGE_SIZE = 200
 AVATAR_FONT_SIZE = 100
 AVATAR_TEXT_Y_OFFSET = 10
@@ -39,7 +38,7 @@ def validate_github(url):
     """Проверка, что предоставленная ссылка ведет на Github."""
     if url:
         parsed = urlparse(url)
-        if 'github.com' not in parsed.netloc.lower():
+        if "github.com" not in parsed.netloc.lower():
             raise forms.ValidationError("Ссылка должна вести именно на Github.")
     return url
 
@@ -49,13 +48,13 @@ def validate_phone_number(phone, exclude_pk=None):
     if not phone:
         return phone
 
-    if not re.match(r'^\+7\d{10}$|^8\d{10}$', phone):
+    if not re.match(r"^\+7\d{10}$|^8\d{10}$", phone):
         raise forms.ValidationError(
             "Номер телефона должен быть в формате 8XXXXXXXXXX или +7XXXXXXXXXX."
         )
 
-    if phone.startswith('8'):
-        normalized = '+7' + phone[1:]
+    if phone.startswith("8"):
+        normalized = "+7" + phone[1:]
     else:
         normalized = phone
 
@@ -65,17 +64,19 @@ def validate_phone_number(phone, exclude_pk=None):
     if exclude_pk:
         qs = qs.exclude(pk=exclude_pk)
 
-    if phone.startswith('+7'):
-        alt_qs = User.objects.filter(phone='8' + phone[2:])
+    if phone.startswith("+7"):
+        alt_qs = User.objects.filter(phone="8" + phone[2:])
     else:
-        alt_qs = User.objects.filter(phone='+7' + phone[1:])
+        alt_qs = User.objects.filter(phone="+7" + phone[1:])
 
     if exclude_pk:
         alt_qs = alt_qs.exclude(pk=exclude_pk)
 
     qs = qs | alt_qs
     if qs.exists():
-        raise forms.ValidationError("Пользователь с таким номером телефона уже существует.")
+        raise forms.ValidationError(
+            "Пользователь с таким номером телефона уже существует."
+        )
 
     return phone
 
